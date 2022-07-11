@@ -92,6 +92,6 @@ color_dict = {'u':'purple','g':'green','r':'red','i':'goldenrod','z':'black','y'
 for filt in np.unique(filters):
 	gind = np.where(filters == filt)
 	plt.errorbar(t[gind],m[gind],err[gind],fmt='o',color=color_dict[filt])
-np.savez('test.npz', t=t, m=m, err=err, color=color_dict) #Correct??
-#plt.show()
+#np.savez('test.npz', t=t, m=m, err=err, color=color_dict)
+plt.show()
 #plt.clf()

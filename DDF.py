@@ -4,15 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sqlite3
-import sqlalchemy
-import random
-import json
 from scipy import interpolate
-from astropy.coordinates import SkyCoord
-from scipy.integrate import simps
-from astropy.cosmology import WMAP9 as cosmo
 from eztao.carma import DRW_term
-from eztao.ts import gpSimRand, gpSimByTime
+from eztao.ts import gpSimByTime
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 band_list = ['u','g','r','i','z','y']
 
 def make_AGN_model(t, tau, amp):
@@ -51,22 +47,19 @@ def inject_agn():
         'SELECT fieldRA, fieldDec, seeingFwhmEff, observationStartMJD, filter, fiveSigmaDepth, skyBrightness  FROM SummaryAllProps',conn)
     conn.close()
 
-    # Pick a random location on the sky
-    ra = np.random.uniform(0, 360)
-    dec = np.random.uniform(-90, 0)
+    c = SkyCoord('02 22 50 -04 45 00', unit=(u.hourangle, u.deg))
+    print(c.ra.deg, c.dec.deg)
 
     # See if LSST is pointing at this location:
-    new_db = df.where((np.abs(df['fieldRA'] - ra) < 1.75) & \
-        (np.abs(df['fieldDec'] - dec) < 1.75)).dropna()
+    new_db = df.where((np.abs(df['fieldRA'] - c.ra.deg) < 1.75) & \
+        (np.abs(df['fieldDec'] - c.dec.deg) < 1.75)).dropna()
     if len(new_db) == 0:
         print('LSST was not looking here...')
         sys.exit()
-
-
-
     for j, myband in enumerate(band_list):
         lsst_mags = np.zeros(len(new_db))
         gind2 = np.where(new_db['filter'] == myband)
+        #print(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values)
         new_model_mags, yerr = make_AGN_model(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values, 100, 0.1)
         lsst_mags[gind2] = new_model_mags
         best_fit = drw_fit(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values, lsst_mags[gind2], yerr)
@@ -78,9 +71,6 @@ def inject_agn():
         ax.plot(freq, true_psd(freq), label='Input PSD')
         ax.plot(freq, best_psd(freq), label='Best-fit PSD')
         plt.xscale('log')
-
-
-
     # now lets add noise to the LC...this involves eqns..
     g = 2.2
     h = 6.626e-27
@@ -96,7 +86,6 @@ def inject_agn():
     B = expTime * np.pi * 321.15 ** 2 / g / h * my_integrals * (pixscale) ** 2
     def mag_to_flux(mag):
         return 10. ** (-0.4 * (mag + 48.6))
-
     snr = C / np.sqrt(C / g + (B / g + sig_in ** 2) * neff)
     err = 1.09 / snr
     return new_db['observationStartMJD'].values, lsst_mags + np.random.normal(loc=0 * err, scale=err), err, new_db['filter'].values
@@ -104,5 +93,3 @@ t, m, err, filters = inject_agn()
 
 color_dict = {'u': 'purple', 'g': 'green', 'r': 'red', 'i': 'goldenrod', 'z': 'black', 'y': 'yellow'}
 plt.show()
-
-
