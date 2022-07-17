@@ -58,8 +58,7 @@ def inject_agn():
 	dec = np.random.uniform(-90,0)
 
 	#See if LSST is pointing at this location:
-	new_db = df.where((np.abs(df['fieldRA'] - ra)<1.75) & \
-		(np.abs(df['fieldDec'] - dec)<1.75)).dropna()
+	new_db = df.where((np.abs(df['fieldRA'] - ra)<1.75) & (np.abs(df['fieldDec'] - dec)<1.75)).dropna()
 	if len(new_db) == 0:
 		print('LSST was not looking here...')
 		sys.exit()
@@ -88,10 +87,13 @@ def inject_agn():
 	err = 1.09/snr
 	return new_db['observationStartMJD'].values, lsst_mags+np.random.normal(loc=0*err,scale=err), err, new_db['filter'].values
 t, m, err, filters = inject_agn()
-color_dict = {'u':'purple','g':'green','r':'red','i':'goldenrod','z':'black','y':'yellow'}
+color_dict = {'u':'purple','g':'green','r':'red','i':'blue','z':'black','y':'yellow'}
 for filt in np.unique(filters):
 	gind = np.where(filters == filt)
-	plt.errorbar(t[gind],m[gind],err[gind],fmt='o',color=color_dict[filt])
+	plt.errorbar(t[gind],m[gind],err[gind],fmt='o',color=color_dict[filt], label = filt)
 #np.savez('test.npz', t=t, m=m, err=err, color=color_dict)
+plt.legend()
+plt.xlabel('MJD')
+plt.ylabel('Flux [Arbitrary Units]')
 plt.show()
 #plt.clf()

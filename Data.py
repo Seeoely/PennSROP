@@ -9,18 +9,34 @@ from eztao.carma import DRW_term
 from eztao.ts import gpSimRand, gpSimByTime
 
 band_list = ['u','g','r','i','z','y']
-mag = np.empty(100, dtype=float)
-tau = np.empty(100, dtype=float)
-amp = np.empty(100, dtype=float)
+
 def make_AGN_model(t, tau, amp):
-    DRW_kernel = DRW_term(np.log(amp), np.log(tau))
+    DRW_kernel = DRW_term(amp, tau)
     t, y, yerr = gpSimByTime(DRW_kernel, 1000, t-np.min(t), factor=10, nLC=1, log_flux=True)
+    print(len(t), t)
     return y + 22., yerr
 
+def convert(s):
+    new = ""
+    for x in s:
+        new += x
+    num = float(new)
+    return num
 
 # This just defined the different wavelengths which LSST observes at
 band_wvs = 1. / (0.0001 * np.asarray([3751.36, 4741.64, 6173.23, 7501.62, 8679.19, 9711.53]))
-for x in range(100):
+
+
+for x in range(120):
+    with open("/Users/colevogt/Downloads/PennSROP/AGN.txt", 'r') as file:
+        data = file.readlines()
+        tauStr = [data[2 * x][i] for i in range(7)]
+        TempTau = convert(tauStr)
+        if (TempTau < 4):
+            tau = TempTau
+            ampStr = [data[2 * x + 1][j] for j in range(9)]
+            amp = convert(ampStr)
+    file.close
     def inject_agn():
         # This sets up equations we need to calculate uncertainties
         function_list = np.asarray([])
@@ -57,18 +73,15 @@ for x in range(100):
         if len(new_db) == 0:
             print('LSST was not looking here...')
             sys.exit()
-
         for j, myband in enumerate(band_list):
             lsst_mags = np.zeros(len(new_db))
             gind2 = np.where(new_db['filter'] == myband)
-            new_model_mags, yerr = make_AGN_model(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values, 100, 0.1)
+            new_model_mags, yerr = make_AGN_model(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values, tau, amp)
             lsst_mags[gind2] = new_model_mags
-            #print(lsst_mags[gind2])
-            best_fit = drw_fit(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values, lsst_mags[gind2], yerr)
-            best_psd = gp_psd(DRW_term(*np.log(best_fit)))
-            DRW_kernel = DRW_term(np.log(0.1), np.log(100))
-            true_psd = gp_psd(DRW_kernel)
-
+            #best_fit = drw_fit(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values, lsst_mags[gind2], yerr)
+            #best_psd = gp_psd(DRW_term(*np.log(best_fit)))
+            #DRW_kernel = DRW_term(amp, tau)
+            #true_psd = gp_psd(DRW_kernel)
 
         # now lets add noise to the LC...this involves eqns..
         g = 2.2
@@ -85,14 +98,14 @@ for x in range(100):
         B = expTime * np.pi * 321.15 ** 2 / g / h * my_integrals * (pixscale) ** 2
         def mag_to_flux(mag):
             return 10. ** (-0.4 * (mag + 48.6))
-
         snr = C / np.sqrt(C / g + (B / g + sig_in ** 2) * neff)
         err = 1.09 / snr
         mag = lsst_mags + np.random.normal(loc=0 * err, scale=err)
+
         return new_db['observationStartMJD'].values, mag, new_db['filter'].values
-    t, mag[x], filters = inject_agn()
+    t, mag, filters= inject_agn()
+
     color_dict = {'u': 'purple', 'g': 'green', 'r': 'red', 'i': 'goldenrod', 'z': 'black', 'y': 'yellow'}
-    #np.savez('AGN'x'', t=t, mag['x']=mag[x], tau['x']=tau[x], amp['x']=amp[x], color=color_dict)
-
-
-print(m[0], tau[0], amp[0], filters)
+    n = str(x)
+    #print(len(t), len(mag), tau, amp)
+    #np.savez('AGN'+n+'.npz', t=t, mag=mag, tau=tau, amp=amp, filter=filter)

@@ -21,6 +21,13 @@ def make_AGN_model(t, tau, amp):
     return y + 22., yerr
 
 
+def convert(s):
+    new = ""
+    for k in s:
+        new += k
+    return new
+
+
 # This just defined the different wavelengths which LSST observes at
 band_wvs = 1. / (0.0001 * np.asarray([3751.36, 4741.64, 6173.23, 7501.62, 8679.19, 9711.53]))
 
@@ -103,6 +110,8 @@ def inject_agn():
 t, m, err, filters = inject_agn()
 
 color_dict = {'u': 'purple', 'g': 'green', 'r': 'red', 'i': 'goldenrod', 'z': 'black', 'y': 'yellow'}
+plt.xlabel('Frequency [1/Day]')
+plt.ylabel('PSD')
 plt.show()
 
 

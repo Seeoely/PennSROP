@@ -13,7 +13,7 @@ band_list = ['u','g','r','i','z','y']
 
 def make_AGN_model(t, tau, amp):
     DRW_kernel = DRW_term(np.log(amp), np.log(tau))
-    t, y, yerr = gpSimByTime(DRW_kernel, 1000, t-np.min(t), factor=10, nLC=1, log_flux=True)
+    t, y, yerr = gpSimByTime(DRW_kernel, 1000, t-np.min(t), factor=1, nLC=1, log_flux=True)
     return y + 22., yerr
 
 
@@ -48,7 +48,6 @@ def inject_agn():
     conn.close()
 
     c = SkyCoord('02 22 50 -04 45 00', unit=(u.hourangle, u.deg))
-    print(c.ra.deg, c.dec.deg)
 
     # See if LSST is pointing at this location:
     new_db = df.where((np.abs(df['fieldRA'] - c.ra.deg) < 1.75) & \
@@ -59,7 +58,6 @@ def inject_agn():
     for j, myband in enumerate(band_list):
         lsst_mags = np.zeros(len(new_db))
         gind2 = np.where(new_db['filter'] == myband)
-        #print(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values)
         new_model_mags, yerr = make_AGN_model(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values, 100, 0.1)
         lsst_mags[gind2] = new_model_mags
         best_fit = drw_fit(new_db['observationStartMJD'].where(new_db['filter'] == myband).dropna().values, lsst_mags[gind2], yerr)
@@ -92,4 +90,5 @@ def inject_agn():
 t, m, err, filters = inject_agn()
 
 color_dict = {'u': 'purple', 'g': 'green', 'r': 'red', 'i': 'goldenrod', 'z': 'black', 'y': 'yellow'}
-plt.show()
+#plt.show()
+np.savez('XMM-LSS.npz', t=t, m=m, err=err, color=color_dict)
